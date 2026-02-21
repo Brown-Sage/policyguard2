@@ -33,8 +33,8 @@ export default function Sidebar({ userId, darkMode, setDarkMode, activeTab, setA
                     <button
                         onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false) }}
                         className={`w-full flex items-center gap-3.5 px-5 py-3.5 rounded-2xl font-semibold transition-all duration-200 ${activeTab === 'dashboard'
-                                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-md shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700/50'
-                                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 border border-transparent'
+                            ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-md shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700/50'
+                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 border border-transparent'
                             }`}
                     >
                         <span className={`text-xl transition-transform duration-200 ${activeTab === 'dashboard' ? 'scale-110' : 'grayscale opacity-70'}`}>📊</span>
@@ -42,10 +42,21 @@ export default function Sidebar({ userId, darkMode, setDarkMode, activeTab, setA
                     </button>
 
                     <button
+                        onClick={() => { setActiveTab('violations'); setSidebarOpen(false) }}
+                        className={`w-full flex items-center gap-3.5 px-5 py-3.5 rounded-2xl font-semibold transition-all duration-200 ${activeTab === 'violations'
+                            ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-md shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700/50'
+                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 border border-transparent'
+                            }`}
+                    >
+                        <span className={`text-xl transition-transform duration-200 ${activeTab === 'violations' ? 'scale-110' : 'grayscale opacity-70'}`}>🚨</span>
+                        All Violations
+                    </button>
+
+                    <button
                         onClick={() => { setActiveTab('policies'); setSidebarOpen(false) }}
                         className={`w-full flex items-center gap-3.5 px-5 py-3.5 rounded-2xl font-semibold transition-all duration-200 ${activeTab === 'policies'
-                                ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-md shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700/50'
-                                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 border border-transparent'
+                            ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-md shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700/50'
+                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 border border-transparent'
                             }`}
                     >
                         <span className={`text-xl transition-transform duration-200 ${activeTab === 'policies' ? 'scale-110' : 'grayscale opacity-70'}`}>📁</span>

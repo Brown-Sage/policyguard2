@@ -1,0 +1,5 @@
+.vscode
+.vscode/
+PolicyGuard/node_modules
+PolicyGuard/dist
+backend/.env*

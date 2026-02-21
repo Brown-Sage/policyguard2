@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
 import PolicyDocuments from './components/PolicyDocuments'
+import ViolationsPage from './components/ViolationsPage'
 
 function getUserId() {
   let id = localStorage.getItem('pg_user_id')
@@ -33,13 +34,13 @@ export default function App() {
   }, [darkMode])
 
   // Navigation State
-  const [activeTab, setActiveTab] = useState('dashboard') // 'dashboard' | 'policies'
+  const [activeTab, setActiveTab] = useState('dashboard') // 'dashboard' | 'policies' | 'violations'
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className={`flex h-screen font-sans overflow-hidden transition-colors duration-500 ${darkMode
-        ? 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black text-gray-100'
-        : 'bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 text-slate-900'
+      ? 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black text-gray-100'
+      : 'bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 text-slate-900'
       }`}>
 
       {/* Decorative background blobs for a modern look */}
@@ -92,6 +93,10 @@ export default function App() {
             <Dashboard userId={userId} />
           </div>
 
+          <div className={activeTab === 'violations' ? 'block animate-fade-in-up' : 'hidden'}>
+            <ViolationsPage />
+          </div>
+
           <div className={activeTab === 'policies' ? 'block animate-fade-in-up' : 'hidden'}>
             <PolicyDocuments setActiveTab={setActiveTab} />
           </div>
@@ -110,7 +115,7 @@ export default function App() {
         }
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { 
+        .custom-scrollbar::-webkit-scrollbar-thumb {
           background-color: rgba(148, 163, 184, 0.3); 
           border-radius: 20px; 
           border: 2px solid transparent;

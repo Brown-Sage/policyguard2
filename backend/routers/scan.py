@@ -1,5 +1,5 @@
 import secrets
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from typing import List
@@ -8,8 +8,23 @@ from database import get_db
 from models.models import Employee, Rule, Violation, Policy, ScanLog
 from schemas.schemas import Violation as ViolationSchema
 from services.compliance_engine import evaluate_employees_against_rules
+from services.auth_service import decode_token
 
 router = APIRouter(prefix="/api/scan", tags=["Scan"])
+
+
+def _get_user_id(request: Request) -> int | None:
+    """Extract user_id from the Bearer JWT, or return None if missing/invalid."""
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        payload = decode_token(auth[7:])
+        if payload:
+            try:
+                return int(payload.get("sub"))
+            except (TypeError, ValueError):
+                pass
+    return None
+
 
 @router.post("/reset")
 async def reset_system(db: AsyncSession = Depends(get_db)):
@@ -23,8 +38,10 @@ async def reset_system(db: AsyncSession = Depends(get_db)):
     return {"message": "System reset."}
 
 @router.post("/trigger", response_model=List[ViolationSchema])
-async def trigger_scan(employee_id: int = None, db: AsyncSession = Depends(get_db)):
+async def trigger_scan(request: Request, employee_id: int = None, db: AsyncSession = Depends(get_db)):
     """Triggers a batch compliance scan and saves a persistent ScanLog entry."""
+    user_id = _get_user_id(request)
+
     # 1. Fetch active rules
     rules_result = await db.execute(select(Rule).filter(Rule.is_active == True))
     active_rules = rules_result.scalars().all()
@@ -51,7 +68,7 @@ async def trigger_scan(employee_id: int = None, db: AsyncSession = Depends(get_d
         for v in new_violations:
             await db.refresh(v)
 
-    # 4. Count total violations in DB for this scan
+    # 4. Count total violations for this scan
     total_violations_result = await db.execute(select(Violation))
     total_violations = len(total_violations_result.scalars().all())
 
@@ -60,9 +77,10 @@ async def trigger_scan(employee_id: int = None, db: AsyncSession = Depends(get_d
     latest_policy = policy_result.scalars().first()
     policy_filename = latest_policy.filename if latest_policy else "Unknown Policy"
 
-    # 6. Save ScanLog (preserve across resets)
+    # 6. Save ScanLog scoped to this user
     log = ScanLog(
-        scan_id=secrets.token_hex(4),           # short 8-char hex like '4bb07fc9'
+        user_id=user_id,
+        scan_id=secrets.token_hex(4),
         policy_filename=policy_filename,
         dataset_filename="Policy_Compliance_Dataset_Updated.csv",
         violation_count=total_violations,
@@ -74,11 +92,15 @@ async def trigger_scan(employee_id: int = None, db: AsyncSession = Depends(get_d
     return new_violations
 
 @router.get("/logs")
-async def get_scan_logs(db: AsyncSession = Depends(get_db)):
-    """Returns all historical scan logs ordered newest-first."""
-    result = await db.execute(
-        select(ScanLog).order_by(ScanLog.scanned_at.desc())
-    )
+async def get_scan_logs(request: Request, db: AsyncSession = Depends(get_db)):
+    """Returns scan logs for the current user (or all if not authenticated)."""
+    user_id = _get_user_id(request)
+
+    query = select(ScanLog).order_by(ScanLog.scanned_at.desc())
+    if user_id is not None:
+        query = query.where(ScanLog.user_id == user_id)
+
+    result = await db.execute(query)
     logs = result.scalars().all()
     return [
         {
@@ -93,3 +115,16 @@ async def get_scan_logs(db: AsyncSession = Depends(get_db)):
         }
         for log in logs
     ]
+
+@router.delete("/logs")
+async def clear_scan_logs(request: Request, db: AsyncSession = Depends(get_db)):
+    """Deletes scan history logs for the current user only."""
+    user_id = _get_user_id(request)
+
+    if user_id is not None:
+        await db.execute(delete(ScanLog).where(ScanLog.user_id == user_id))
+    else:
+        await db.execute(delete(ScanLog))
+
+    await db.commit()
+    return {"message": "Scan history cleared."}

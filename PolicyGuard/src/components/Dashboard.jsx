@@ -4,6 +4,11 @@ import ViolationsTable from './ViolationsTable'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
+function authHeaders() {
+    const token = localStorage.getItem('pg_token')
+    return token ? { 'Authorization': `Bearer ${token}` } : {}
+}
+
 export default function Dashboard({ userId }) {
 
     // Form states
@@ -31,7 +36,7 @@ export default function Dashboard({ userId }) {
     async function fetchLogs() {
         setHistoryLoading(true)
         try {
-            const res = await fetch(`${BASE_URL}/scan/logs`)
+            const res = await fetch(`${BASE_URL}/scan/logs`, { headers: authHeaders() })
             if (res.ok) setHistory(await res.json())
         } catch { /* ignore */ } finally {
             setHistoryLoading(false)
@@ -51,7 +56,7 @@ export default function Dashboard({ userId }) {
 
         try {
             // 0. Reset Backend State for Isolated Scan
-            const resetRes = await fetch(`${BASE_URL}/scan/reset`, { method: 'POST' })
+            const resetRes = await fetch(`${BASE_URL}/scan/reset`, { method: 'POST', headers: authHeaders() })
             if (!resetRes.ok) throw new Error('Failed to isolate scan environment.')
 
             // 1. Upload Policy PDF
@@ -75,7 +80,7 @@ export default function Dashboard({ userId }) {
             const csvData = await csvRes.json()
 
             // 3. Trigger Scan
-            const scanRes = await fetch(`${BASE_URL}/scan/trigger`, { method: 'POST' })
+            const scanRes = await fetch(`${BASE_URL}/scan/trigger`, { method: 'POST', headers: authHeaders() })
             if (!scanRes.ok) throw new Error(`Scan failed: ${await scanRes.text()}`)
             const scanData = await scanRes.json()
 
@@ -268,7 +273,22 @@ export default function Dashboard({ userId }) {
                             <span className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-800/30 shadow-sm inline-flex">🕒</span>
                             Scan History
                         </h3>
-                        <span className="text-xs text-slate-400 font-medium">click to expand</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400 font-medium">click to expand</span>
+                            {history.length > 0 && (
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm('Clear all scan history?')) return
+                                        await fetch(`${BASE_URL}/scan/logs`, { method: 'DELETE', headers: authHeaders() })
+                                        setHistory([])
+                                    }}
+                                    className="text-xs font-semibold text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 transition-colors px-2 py-0.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                                    title="Clear all history"
+                                >
+                                    🗑 Clear
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
@@ -300,8 +320,8 @@ export default function Dashboard({ userId }) {
                                         </div>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 truncate mb-2">📄 {r.policy_filename}</p>
                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold shadow-sm ${r.violation_count > 0
-                                                ? 'bg-rose-50/80 border-rose-200/50 text-rose-700 dark:bg-rose-900/20 dark:border-rose-800/50 dark:text-rose-400'
-                                                : 'bg-emerald-50/80 border-emerald-200/50 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800/50 dark:text-emerald-400'
+                                            ? 'bg-rose-50/80 border-rose-200/50 text-rose-700 dark:bg-rose-900/20 dark:border-rose-800/50 dark:text-rose-400'
+                                            : 'bg-emerald-50/80 border-emerald-200/50 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800/50 dark:text-emerald-400'
                                             }`}>
                                             {r.violation_count > 0 ? '⚠️' : '🛡️'} {r.violation_count} Violations
                                         </span>
@@ -341,8 +361,8 @@ export default function Dashboard({ userId }) {
                                         <p className="text-2xl font-extrabold text-slate-700 dark:text-white">{selectedLog.employee_count}</p>
                                     </div>
                                     <div className={`p-4 rounded-2xl border text-center ${selectedLog.violation_count > 0
-                                            ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200/50 dark:border-rose-800/50'
-                                            : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200/50 dark:border-emerald-800/50'
+                                        ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200/50 dark:border-rose-800/50'
+                                        : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200/50 dark:border-emerald-800/50'
                                         }`}>
                                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Violations</p>
                                         <p className={`text-2xl font-extrabold ${selectedLog.violation_count > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'

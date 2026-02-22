@@ -4,6 +4,8 @@ sqlalchemy
 greenlet
 pydantic-settings
 python-multipart
+python-jose[cryptography]
+bcrypt
 google-genai
 pdfplumber
 pytest

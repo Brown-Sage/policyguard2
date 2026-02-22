@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from database import engine, Base
 
-from routers import policies, rules, employees, scan, violations
+from routers import policies, rules, employees, scan, violations, auth
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -20,6 +20,7 @@ app.include_router(rules.router)
 app.include_router(employees.router)
 app.include_router(scan.router)
 app.include_router(violations.router)
+app.include_router(auth.router)
 
 @app.on_event("startup")
 async def startup():

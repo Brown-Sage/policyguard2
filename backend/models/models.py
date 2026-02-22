@@ -63,13 +63,23 @@ class Violation(Base):
     employee = relationship("Employee", back_populates="violations")
     rule = relationship("Rule", back_populates="violations")
 
+class User(Base):
+    __tablename__ = "users"
+
+    id              = Column(Integer, primary_key=True, index=True)
+    email           = Column(String, unique=True, index=True, nullable=False)
+    username        = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    created_at      = Column(DateTime, default=datetime.utcnow)
+
 class ScanLog(Base):
     __tablename__ = "scan_logs"
 
     id              = Column(Integer, primary_key=True, index=True)
-    scan_id         = Column(String, index=True)          # short hex ID shown in UI
-    policy_filename = Column(String, nullable=True)        # which PDF was uploaded
-    dataset_filename= Column(String, nullable=True)        # which CSV was uploaded
+    user_id         = Column(Integer, nullable=True, index=True)  # FK to users.id
+    scan_id         = Column(String, index=True)
+    policy_filename = Column(String, nullable=True)
+    dataset_filename= Column(String, nullable=True)
     violation_count = Column(Integer, default=0)
     employee_count  = Column(Integer, default=0)
     scanned_at      = Column(DateTime, default=datetime.utcnow)

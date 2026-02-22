@@ -4,6 +4,7 @@ sqlalchemy
 greenlet
 pydantic-settings
 python-multipart
+google-genai
 pdfplumber
 pytest
 httpx

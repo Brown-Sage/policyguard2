@@ -19,6 +19,7 @@ export default function Dashboard({ userId }) {
     const [violations, setViolations] = useState([])
     const [history, setHistory] = useState([])
     const [historyLoading, setHistoryLoading] = useState(false)
+    const [selectedLog, setSelectedLog] = useState(null)
 
     // UI state
     const [dragOverPdf, setDragOverPdf] = useState(false)
@@ -26,11 +27,18 @@ export default function Dashboard({ userId }) {
     const pdfRef = useRef()
     const csvRef = useRef()
 
-    // Initial fetch removed since we manage history locally per scan session.
-    // The All Violations page handles the global database view.
-    useEffect(() => {
-        // Nothing on mount
-    }, [userId])
+    // Fetch scan logs from the API (persists across refreshes)
+    async function fetchLogs() {
+        setHistoryLoading(true)
+        try {
+            const res = await fetch(`${BASE_URL}/scan/logs`)
+            if (res.ok) setHistory(await res.json())
+        } catch { /* ignore */ } finally {
+            setHistoryLoading(false)
+        }
+    }
+
+    useEffect(() => { fetchLogs() }, [])
 
     async function runAnalysis() {
         if (!pdfFile) { setError('Please select a Policy PDF file.'); return }
@@ -82,13 +90,8 @@ export default function Dashboard({ userId }) {
             }
             setSummary(newSummary)
 
-            // Prepend this run to the session history
-            setHistory(prev => [{
-                report_id: crypto.randomUUID().slice(0, 8),
-                created_at: new Date().toISOString(),
-                violations_found: totalViolations,
-                compliance_score: newSummary.compliance_score
-            }, ...prev])
+            // Refresh logs from API so new entry appears immediately
+            await fetchLogs()
         } catch (e) {
             setError(e.message)
         } finally {
@@ -258,54 +261,99 @@ export default function Dashboard({ userId }) {
                     </div>
                 </section>
 
-                {/* Mini History Sidebar */}
+                {/* Scan Log History Panel */}
                 <section className="bg-white/60 dark:bg-slate-800/40 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-200/50 dark:border-slate-700/50 p-6 xl:p-8 flex flex-col h-[600px] xl:h-[auto] xl:min-h-[500px]">
                     <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200/50 dark:border-slate-700/50">
                         <h3 className="text-xl font-bold flex items-center gap-3 text-slate-800 dark:text-slate-100 tracking-tight">
-                            <span className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-800/30 shadow-sm inline-flex">
-                                🕒
-                            </span>
-                            Session Logs
+                            <span className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-800/30 shadow-sm inline-flex">🕒</span>
+                            Scan History
                         </h3>
+                        <span className="text-xs text-slate-400 font-medium">click to expand</span>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto pr-3 space-y-4 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
                         {historyLoading && history.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full text-sm font-medium text-slate-400 gap-3">
                                 <svg className="animate-spin h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                 </svg>
                                 Loading history...
                             </div>
                         ) : history.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full text-center text-sm font-medium text-slate-400 gap-3">
                                 <span className="text-4xl opacity-50">🧭</span>
-                                No history found.<br />Run an analysis to get started.
+                                No scans yet.<br />Run an analysis to get started.
                             </div>
                         ) : (
-                            history.map((r, idx) => (
-                                <div key={idx} className="relative group p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50 transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-blue-500/5">
-                                    <div className="absolute top-0 left-0 w-1 h-full bg-slate-200/50 dark:bg-slate-700/50 group-hover:bg-blue-500 dark:group-hover:bg-blue-400 rounded-l-2xl transition-colors duration-300"></div>
+                            history.map((r) => (
+                                <button
+                                    key={r.id}
+                                    onClick={() => setSelectedLog(r)}
+                                    className="w-full text-left relative group p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
+                                >
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-slate-200/50 dark:bg-slate-700/50 group-hover:bg-blue-500 rounded-l-2xl transition-colors duration-200" />
                                     <div className="pl-3">
-                                        <div className="flex justify-between items-start mb-3">
-                                            <span className="font-extrabold text-slate-700 dark:text-slate-200 text-sm tracking-tight text-ellipsis overflow-hidden whitespace-nowrap pr-2">Scan Report #{r.report_id}</span>
-                                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded-md">{new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="font-extrabold text-slate-700 dark:text-slate-200 text-sm tracking-tight">Scan #{r.scan_id}</span>
+                                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded-md shrink-0">{r.scanned_at}</span>
                                         </div>
-                                        <div className="flex items-center gap-2.5 text-xs font-bold">
-                                            <span className={`px-2.5 py-1.5 rounded-lg border shadow-sm ${r.violations_found > 0
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate mb-2">📄 {r.policy_filename}</p>
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold shadow-sm ${r.violation_count > 0
                                                 ? 'bg-rose-50/80 border-rose-200/50 text-rose-700 dark:bg-rose-900/20 dark:border-rose-800/50 dark:text-rose-400'
                                                 : 'bg-emerald-50/80 border-emerald-200/50 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800/50 dark:text-emerald-400'
-                                                }`}>
-                                                {r.violations_found > 0 ? '⚠️' : '🛡️'} {r.violations_found} Violations
-                                            </span>
-                                        </div>
+                                            }`}>
+                                            {r.violation_count > 0 ? '⚠️' : '🛡️'} {r.violation_count} Violations
+                                        </span>
                                     </div>
-                                </div>
+                                </button>
                             ))
                         )}
                     </div>
                 </section>
+
+                {/* Log Detail Modal */}
+                {selectedLog && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedLog(null)}>
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 p-8 w-full max-w-md animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-lg font-extrabold text-slate-800 dark:text-white">Scan #{selectedLog.scan_id}</h3>
+                                <button onClick={() => setSelectedLog(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-2xl leading-none">&times;</button>
+                            </div>
+                            <div className="space-y-4">
+                                <div className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
+                                    <span className="text-2xl">📄</span>
+                                    <div>
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Policy Document</p>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{selectedLog.policy_filename}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
+                                    <span className="text-2xl">📊</span>
+                                    <div>
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Dataset</p>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{selectedLog.dataset_filename}</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 text-center">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Employees</p>
+                                        <p className="text-2xl font-extrabold text-slate-700 dark:text-white">{selectedLog.employee_count}</p>
+                                    </div>
+                                    <div className={`p-4 rounded-2xl border text-center ${selectedLog.violation_count > 0
+                                            ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200/50 dark:border-rose-800/50'
+                                            : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200/50 dark:border-emerald-800/50'
+                                        }`}>
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Violations</p>
+                                        <p className={`text-2xl font-extrabold ${selectedLog.violation_count > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                                            }`}>{selectedLog.violation_count}</p>
+                                    </div>
+                                </div>
+                                <p className="text-center text-xs text-slate-400">{selectedLog.scanned_at_full ? new Date(selectedLog.scanned_at_full).toLocaleString() : ''}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* RESULTS SECTION */}

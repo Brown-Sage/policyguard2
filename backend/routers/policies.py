@@ -7,7 +7,8 @@ from database import get_db
 from models.models import Policy, Rule
 from schemas.schemas import Policy as PolicySchema
 from services.pdf_extractor import extract_text_from_pdf
-from services.regex_rule_extractor import extract_rules_from_text
+from services.regex_rule_extractor import extract_rules_from_text as regex_extract
+from services.gemini_service import generate_rules_from_text as gemini_extract
 
 router = APIRouter(prefix="/api/policies", tags=["Policies"])
 
@@ -29,10 +30,19 @@ async def upload_policy(file: UploadFile = File(...), db: AsyncSession = Depends
     await db.commit()
     await db.refresh(new_policy)
 
-    # 3. Extract rules deterministically from the PDF text
-    extracted_rules = extract_rules_from_text(extracted_text)
-    print(f"[policies] Extracted {len(extracted_rules)} rules: "
-          f"{[r['field'] + ' ' + r['condition'] for r in extracted_rules]}")
+    # 3. Two-Tier Rule Extraction:
+    #    Tier 1 — Gemini AI (richer NLP, column-aware when CSV headers provided)
+    #    Tier 2 — Regex fallback (deterministic, always works, no API needed)
+    extracted_rules = regex_extract(extracted_text)  # pre-compute fallback
+    print(f"[policies] Regex fallback: {len(extracted_rules)} rules")
+
+    try:
+        ai_rules = await gemini_extract(extracted_text)
+        if ai_rules:
+            extracted_rules = ai_rules
+            print(f"[policies] Gemini extracted {len(ai_rules)} rules (Tier 1 used).")
+    except Exception as e:
+        print(f"[policies] Gemini unavailable ({type(e).__name__}: {e}), using regex fallback.")
 
     # 4. Save Rules to DB
     created_rules = []

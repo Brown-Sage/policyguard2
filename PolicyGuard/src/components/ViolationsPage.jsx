@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import ViolationsTable from './ViolationsTable'
 
-const BASE_URL = 'http://localhost:8000/api'
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
 export default function ViolationsPage() {
     const [violations, setViolations] = useState([])
